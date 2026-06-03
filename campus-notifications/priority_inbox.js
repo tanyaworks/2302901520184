@@ -1,15 +1,11 @@
 const axios = require("axios");
+const { Log } = require("../logging_midddleware/logger");
 
-const TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJNYXBDbGFpbXMiOnsiYXVkIjoiaHR0cDovLzIwLjI0NC41Ni4xNDQvZXZhbHVhdGlvbi1zZXJ2aWNlIiwiZW1haWwiOiJqaGEudGFueWFhMTJAZ21haWwuY29tIiwiZXhwIjoxNzgwNDY0NjMyLCJpYXQiOjE3ODA0NjM3MzIsImlzcyI6IkFmZm9yZCBNZWRpY2FsIFRlY2hub2xvZ2llcyBQcml2YXRlIExpbWl0ZWQiLCJqdGkiOiI4ZWFkOTQ1Ny0wYmE1LTQ4ODYtYmJhYi1hMTM5MDQzNTcwYTAiLCJsb2NhbGUiOiJlbi1JTiIsIm5hbWUiOiJ0YW55YSBqaGEiLCJzdWIiOiJiM2I2Nzc5Yy0yMjI1LTQwNTQtYTEyOS00MGU4MGZhMDM3OGIifSwiZW1haWwiOiJqaGEudGFueWFhMTJAZ21haWwuY29tIiwibmFtZSI6InRhbnlhIGpoYSIsInJvbGxObyI6IjIzMDI5MDE1MjAxODQiLCJhY2Nlc3NDb2RlIjoic2RXV2djIiwiY2xpZW50SUQiOiJiM2I2Nzc5Yy0yMjI1LTQwNTQtYTEyOS00MGU4MGZhMDM3OGIiLCJjbGllbnRTZWNyZXQiOiJkY1RTWEhZcXVya3BFSmJXIn0.Wqb7-emvkLrzQ3j22gw-I0wQijJHGWyJ3wa_zABm5Sg";
+const TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJNYXBDbGFpbXMiOnsiYXVkIjoiaHR0cDovLzIwLjI0NC41Ni4xNDQvZXZhbHVhdGlvbi1zZXJ2aWNlIiwiZW1haWwiOiJqaGEudGFueWFhMTJAZ21haWwuY29tIiwiZXhwIjoxNzgwNDY4MzI3LCJpYXQiOjE3ODA0Njc0MjcsImlzcyI6IkFmZm9yZCBNZWRpY2FsIFRlY2hub2xvZ2llcyBQcml2YXRlIExpbWl0ZWQiLCJqdGkiOiI2MjcyNDhkMi03MDdjLTRkMDQtYjM5NS0xOWIwOWZlMzE4OGIiLCJsb2NhbGUiOiJlbi1JTiIsIm5hbWUiOiJ0YW55YSBqaGEiLCJzdWIiOiJiM2I2Nzc5Yy0yMjI1LTQwNTQtYTEyOS00MGU4MGZhMDM3OGIifSwiZW1haWwiOiJqaGEudGFueWFhMTJAZ21haWwuY29tIiwibmFtZSI6InRhbnlhIGpoYSIsInJvbGxObyI6IjIzMDI5MDE1MjAxODQiLCJhY2Nlc3NDb2RlIjoic2RXV2djIiwiY2xpZW50SUQiOiJiM2I2Nzc5Yy0yMjI1LTQwNTQtYTEyOS00MGU4MGZhMDM3OGIiLCJjbGllbnRTZWNyZXQiOiJkY1RTWEhZcXVya3BFSmJXIn0.Ms0Y_5gcpoiQSJ_DwoT7s5hliPDAGyWjziXYyLs5S18";
 
 const API_URL = "http://4.224.186.213/evaluation-service/notifications";
 
-// Priority weights as per requirement: Placement > Result > Event
-const WEIGHTS = {
-  Placement: 3,
-  Result: 2,
-  Event: 1,
-};
+const WEIGHTS = { Placement: 3, Result: 2, Event: 1 };
 
 function getScore(notification) {
   const typeWeight = WEIGHTS[notification.Type] || 0;
@@ -18,23 +14,21 @@ function getScore(notification) {
 }
 
 async function getPriorityInbox(topN = 10) {
+  await Log("backend", "info", "service", "Fetching notifications from API");
+
   try {
     const response = await axios.get(API_URL, {
-      headers: {
-        Authorization: `Bearer ${TOKEN}`,
-      },
+      headers: { Authorization: `Bearer ${TOKEN}` },
     });
 
     const notifications = response.data.notifications;
+    await Log("backend", "info", "service", `Fetched ${notifications.length} notifications successfully`);
 
-    // Score each notification
     const scored = notifications.map(getScore);
-
-    // Sort by score descending (highest priority first)
     scored.sort((a, b) => b.score - a.score);
-
-    // Get top N
     const topNotifications = scored.slice(0, topN);
+
+    await Log("backend", "info", "service", `Returning top ${topN} priority notifications`);
 
     console.log(`\n===== TOP ${topN} PRIORITY NOTIFICATIONS =====\n`);
     topNotifications.forEach((n, index) => {
@@ -47,6 +41,7 @@ async function getPriorityInbox(topN = 10) {
     });
 
   } catch (error) {
+    await Log("backend", "error", "service", `Failed to fetch notifications: ${error.message}`);
     console.error("Error fetching notifications:", error.message);
   }
 }
